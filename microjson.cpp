@@ -36,18 +36,20 @@
     static micorJsonNull nullout;
     #define micorJsonDebug nullout
 #endif
+
+namespace  {
+enum ParsingState {
+    LookingForNameBegin,
+    LookingForNameEnd,
+    LookingForSeparator,
+    LookingForValueBegin,
+    LookingForValueEnd
+};
+}
 size_t microjson::extractNextProperty(const char *buffer, size_t size, JsonProperty &property) {
     if (buffer == nullptr || size == 0 || size == SIZE_MAX) {
         return SIZE_MAX;
     }
-
-    enum ParsingState {
-        LookingForNameBegin,
-        LookingForNameEnd,
-        LookingForSeparator,
-        LookingForValueBegin,
-        LookingForValueEnd
-    };
 
     property.nameBegin = SIZE_MAX;
     property.nameEnd = SIZE_MAX;
@@ -126,6 +128,7 @@ size_t microjson::extractNextProperty(const char *buffer, size_t size, JsonPrope
             case '9':
                 valueEndMarker = [&buffer, &i](){
                     if (buffer[i] != '+'
+                            && buffer[i] != '-'
                             && buffer[i] != '0'
                             && buffer[i] != '1'
                             && buffer[i] != '2'
@@ -186,7 +189,7 @@ size_t microjson::extractNextProperty(const char *buffer, size_t size, JsonPrope
                 --valueBracesCounter;
                 break;
             case '{':
-                --valueBracesCounter;
+                ++valueBracesCounter;
                 break;
             case ']':
                 --valueBracketsCounter;
@@ -215,7 +218,9 @@ size_t microjson::extractNextProperty(const char *buffer, size_t size, JsonPrope
 
     micorJsonDebug << property.nameBegin << " " << property.nameEnd << " " << property.valueBegin << " " << property.valueEnd << " " << property.type << std::endl;
     if (property.check()) {
-        if (property.type == JsonStringType) {
+        if (property.type == JsonStringType
+                || property.type == JsonArrayType
+                || property.type == JsonObjectType) {
             ++property.valueBegin;
             --property.valueEnd;
         }
