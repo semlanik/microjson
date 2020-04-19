@@ -39,4 +39,19 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake" DESTINATION "
 export(TARGETS ${TARGET} FILE ${TARGET_EXPORT}.cmake)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_PREFIX_PATH})
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/tests")
+
+if(DEFINED $ENV{MICROJSON_MAKE_TESTS})
+    set(MICROJSON_MAKE_TESTS $ENV{MICROJSON_MAKE_TESTS})
+elseif(NOT DEFINED MICROJSON_MAKE_TESTS)
+    set(MICROJSON_MAKE_TESTS ON)
+endif()
+
+if(MICROJSON_MAKE_TESTS)
+    find_package(GTest)
+    if(GTest_FOUND)
+        enable_testing()
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    else()
+        message(STATUS "Force disable test")
+    endif()
+endif()

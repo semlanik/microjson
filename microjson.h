@@ -26,7 +26,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <functional>
+
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 namespace microjson {
@@ -49,42 +52,8 @@ struct JsonValue {
 };
 
 using JsonObject = std::unordered_map<std::string, JsonValue>;
+using JsonArray = std::vector<JsonValue>;
 
-struct JsonProperty {
-    JsonProperty() : nameBegin(SIZE_MAX)
-      , nameEnd(SIZE_MAX)
-      , valueBegin(SIZE_MAX)
-      , valueEnd(SIZE_MAX)
-      , type(JsonInvalidType){}
-
-    size_t nameBegin;
-    size_t nameEnd;
-    size_t valueBegin;
-    size_t valueEnd;
-    JsonType type;
-
-    size_t nameSize() const {
-        return nameEnd - nameBegin;
-    }
-
-    size_t valueSize() const {
-        return valueEnd - valueBegin + 1;
-    }
-
-    bool check() const {
-        return type != JsonInvalidType && nameBegin != SIZE_MAX && nameEnd != SIZE_MAX &&
-                valueBegin != SIZE_MAX && valueEnd != SIZE_MAX &&
-                nameBegin < nameEnd && nameEnd < valueBegin &&
-                valueBegin <= valueEnd;
-    }
-
-    bool eofCheck() const {
-        return (type == JsonNumberType || type == JsonBoolType) && nameBegin != SIZE_MAX && nameEnd != SIZE_MAX &&
-                valueBegin != SIZE_MAX && valueEnd == SIZE_MAX &&
-                nameBegin < nameEnd && nameEnd < valueBegin;
-    }
-};
-
-extern JsonObject parseObject(const char *buffer, size_t size);
-extern size_t extractNextProperty(const char *buffer, size_t size, JsonProperty &property);
+extern JsonArray parseJsonArray(const char *buffer, size_t size);
+extern JsonObject parseJsonObject(const char *buffer, size_t size);
 }
