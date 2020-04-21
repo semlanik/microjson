@@ -51,9 +51,51 @@ struct JsonValue {
     JsonType type;
 };
 
+struct JsonProperty {
+    JsonProperty() : nameBegin(SIZE_MAX)
+      , nameEnd(SIZE_MAX)
+      , valueBegin(SIZE_MAX)
+      , valueEnd(SIZE_MAX)
+      , type(microjson::JsonInvalidType){}
+
+    size_t nameBegin;
+    size_t nameEnd;
+    size_t valueBegin;
+    size_t valueEnd;
+    microjson::JsonType type;
+
+    size_t nameSize() const {
+        return nameEnd - nameBegin;
+    }
+
+    size_t valueSize() const {
+        return valueEnd - valueBegin + 1;
+    }
+
+    bool checkValue() const {
+        return type != microjson::JsonInvalidType && valueBegin != SIZE_MAX && valueEnd != SIZE_MAX;
+    }
+
+    bool checkEof() const {
+        return (type == microjson::JsonNumberType || type == microjson::JsonBoolType) &&
+                valueBegin != SIZE_MAX && valueEnd == SIZE_MAX;
+    }
+
+    bool check() const {
+        return checkValue() && nameBegin != SIZE_MAX && nameEnd != SIZE_MAX &&
+                nameBegin < nameEnd && nameEnd < valueBegin;
+    }
+};
+
 using JsonObject = std::unordered_map<std::string, JsonValue>;
 using JsonArray = std::vector<JsonValue>;
 
 extern JsonArray parseJsonArray(const char *buffer, size_t size);
 extern JsonObject parseJsonObject(const char *buffer, size_t size);
+
+inline bool skipWhiteSpace(const char byte) {
+    return byte == '\n' || byte == ' ' || byte == '\r' || byte == '\t' || byte == '\f' || byte == '\v';
+}
+
+extern bool extractProperty(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property);
 }

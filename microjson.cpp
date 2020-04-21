@@ -36,46 +36,6 @@
 #endif
 
 namespace {
-struct JsonProperty {
-    JsonProperty() : nameBegin(SIZE_MAX)
-      , nameEnd(SIZE_MAX)
-      , valueBegin(SIZE_MAX)
-      , valueEnd(SIZE_MAX)
-      , type(microjson::JsonInvalidType){}
-
-    size_t nameBegin;
-    size_t nameEnd;
-    size_t valueBegin;
-    size_t valueEnd;
-    microjson::JsonType type;
-
-    size_t nameSize() const {
-        return nameEnd - nameBegin;
-    }
-
-    size_t valueSize() const {
-        return valueEnd - valueBegin + 1;
-    }
-
-    bool checkValue() const {
-        return type != microjson::JsonInvalidType && valueBegin != SIZE_MAX && valueEnd != SIZE_MAX &&
-                valueBegin <= valueEnd;
-    }
-
-    bool checkEof() const {
-        return (type == microjson::JsonNumberType || type == microjson::JsonBoolType) &&
-                valueBegin != SIZE_MAX && valueEnd == SIZE_MAX;
-    }
-
-    bool check() const {
-        return checkValue() && nameBegin != SIZE_MAX && nameEnd != SIZE_MAX &&
-                nameBegin < nameEnd && nameEnd < valueBegin;
-    }
-};
-
-inline bool skipWhiteSpace(const char byte) {
-    return byte == '\n' || byte == ' ' || byte == '\r' || byte == '\t' || byte == '\f' || byte == '\v';
-}
 
 template<const char expectedBeginByte>
 void lookForBoundaries(const char *buffer, size_t size, size_t &begin, size_t &end) {
@@ -109,13 +69,13 @@ void lookForBoundaries(const char *buffer, size_t size, size_t &begin, size_t &e
     }
 }
 
-void lookForName(const char *buffer, size_t size, size_t &i, JsonProperty &property) {
+void lookForName(const char *buffer, size_t size, size_t &i, microjson::JsonProperty &property) {
     property.nameBegin = SIZE_MAX;
     property.nameEnd = SIZE_MAX;
     bool beginFound = false;
     for(; i < size; ++i) {
         const char byte = buffer[i];
-        if (skipWhiteSpace(byte)) {
+        if (microjson::skipWhiteSpace(byte)) {
             microjsonDebug << "Skip space" << std::endl;
             continue;
         }
@@ -146,7 +106,7 @@ bool lookForSeparator(const char* buffer, size_t size, size_t &i) {
     bool found = false;
     for(; i < size; ++i) {
         const char byte = buffer[i];
-        if (skipWhiteSpace(byte)) {
+        if (microjson::skipWhiteSpace(byte)) {
             microjsonDebug << "Skip space" << std::endl;
             continue;
         }
@@ -160,7 +120,7 @@ bool lookForSeparator(const char* buffer, size_t size, size_t &i) {
     return found;
 }
 
-void lookForValue(const char *buffer, size_t size, size_t &i, JsonProperty &property) {
+void lookForValue(const char *buffer, size_t size, size_t &i, microjson::JsonProperty &property) {
     int valueBracesCounter = -1;
     int valueBracketsCounter = -1;
     int trueCounter = 3;
@@ -176,7 +136,7 @@ void lookForValue(const char *buffer, size_t size, size_t &i, JsonProperty &prop
         const char byte = buffer[i];
         if (!beginFound) {
             microjsonDebug << "lookForValue at: " << i << " byte: " << byte << std::endl;
-            if (skipWhiteSpace(byte)) {
+            if (microjson::skipWhiteSpace(byte)) {
                 microjsonDebug << "Skip space" << std::endl;
                 continue;
             }
@@ -293,78 +253,54 @@ void lookForValue(const char *buffer, size_t size, size_t &i, JsonProperty &prop
             }
         }
     }
-}
 
-bool extractProperty(const char *buffer, size_t size, size_t &i, JsonProperty &property) {
-    lookForName(buffer, size, i, property);
-    if(property.nameBegin == SIZE_MAX && property.nameEnd == SIZE_MAX) {
-        std::cerr << "Name not found" << std::endl;
-        return false;
-    }
-
-    if(!lookForSeparator(buffer, size, i)) {
-        std::cerr << "Separator not found" << std::endl;
-        return false;
-    }
-
-    lookForValue(buffer, size, i, property);
     if (property.checkEof()) {
         property.valueEnd = size - 1; //EOF case
         microjsonDebug << "Found value end at EOF" << std::endl;
-    }
-
-    return property.check();
-}
-
-bool extractValue(const char *buffer, size_t size, size_t &i, JsonProperty &property) {
-    lookForValue(buffer, size, i, property);
-    if (property.checkEof()) {
-        property.valueEnd = size - 1; //EOF case
-        microjsonDebug << "Found value end at EOF" << std::endl;
-    }
-
-    return property.checkValue();
-}
-
-using Extractor = bool(*)(const char *, size_t, size_t &, JsonProperty &);
-template <Extractor extract>
-size_t extractNext(const char *buffer, size_t size, JsonProperty &property) {
-    if (buffer == nullptr || size == 0 || size == SIZE_MAX) {
-        return SIZE_MAX;
-    }
-
-    property.nameBegin = SIZE_MAX;
-    property.nameEnd = SIZE_MAX;
-    property.valueBegin = SIZE_MAX;
-    property.valueEnd = SIZE_MAX;
-    property.type = microjson::JsonInvalidType;
-
-    size_t i = 0;
-    if(!extract(buffer, size, i, property)) {
-        return SIZE_MAX;
     }
 
     if (property.type == microjson::JsonStringType) {
         ++property.valueBegin;
         --property.valueEnd;
     }
+}
 
-    for (size_t j = i + 1; j < size; j++) {
-        const char &byte = buffer[j];
-        if (byte == ',') {
-            return j + 1;
-        } else if (!skipWhiteSpace(byte)) {
-            microjsonDebug << "Unexpected: " << byte;
-            return SIZE_MAX;
+void findSeparator(const char *buffer, size_t size, size_t &i, const char expectedEndByte) {
+    while (++i < size) {
+        if(!microjson::skipWhiteSpace(buffer[i])) {
+            break;
         }
     }
-    return size;
+
+    const char endByte = buffer[i];
+    if (endByte == expectedEndByte) {
+        if(++i != size) {
+            i = SIZE_MAX;
+        }
+    } else if(endByte == ',') {
+        ++i;
+    } else {
+        i = SIZE_MAX;
+    }
 }
+
+bool extractValue(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property) {
+    if (size == 0) {
+        i = SIZE_MAX;
+        return false;
+    }
+    lookForValue(buffer, size, i, property);
+    findSeparator(buffer, size, i, expectedEndByte);
+
+    return property.checkValue();
+}
+
+using Extractor = bool(*)(const char *, size_t, size_t &, const char, microjson::JsonProperty &);
 
 template<typename R,
          const char expectedBeginByte,
          Extractor extract,
-         void(* collect)(const char *, R &, const JsonProperty &property)>
+         void(* collect)(const char *, R &, const microjson::JsonProperty &property)>
 R parseJsonCommon(const char *buffer, size_t size) {
     R returnValue;
 
@@ -380,37 +316,65 @@ R parseJsonCommon(const char *buffer, size_t size) {
         return returnValue;
     }
 
-    JsonProperty property;
+    microjson::JsonProperty property;
     buffer += objectBeginPosition + 1;//Skip '{'
-    size = objectEndPosition - objectBeginPosition - 1;//Skip '}'
+    size = objectEndPosition - objectBeginPosition;//Do not skip '}'
 
     microjsonDebug << "Object buffer size: " << size << " buffer: " << std::string(buffer, size) << std::endl;
 
-    for (size_t nextPosition = extractNext<extract>(buffer, size, property); nextPosition != SIZE_MAX; ) {
+    size_t nextPosition = 0;
+    while (nextPosition < size) {
         microjsonDebug << "nextPropertyPosition: " << nextPosition << "size: " << size << std::endl;
-        if (nextPosition != SIZE_MAX) {
+        if(extract(buffer, size, nextPosition, expectedBeginByte + 2, property)) {
             collect(buffer, returnValue, property);
         }
-        buffer += nextPosition;
-        size = size - nextPosition;
-        nextPosition = extractNext<extract>(buffer, size, property);
     }
+
     return returnValue;
 }
 
-void appendProperty(const char* buffer, microjson::JsonObject &obj, const JsonProperty &property){
+void appendProperty(const char* buffer, microjson::JsonObject &obj, const microjson::JsonProperty &property){
     std::string name((buffer + property.nameBegin), property.nameSize());
-    std::string value((buffer + property.valueBegin), property.valueSize());
+    std::string value;
+    if(property.valueSize() > 0) {
+        value = std::string((buffer + property.valueBegin), property.valueSize());
+    }
     microjsonDebug << "name: " << name << " value: " << value << std::endl;
     obj[name] = { value, property.type };
 };
 
-void appendValue(const char* buffer, microjson::JsonArray &values, const JsonProperty &property){
+void appendValue(const char* buffer, microjson::JsonArray &values, const microjson::JsonProperty &property){
     std::string value = std::string((buffer + property.valueBegin), property.valueSize());
     microjsonDebug << "value: " << value << std::endl;
     values.push_back({value, property.type});
 };
 
+}
+
+bool microjson::extractProperty(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property) {
+    if (size == 0) {
+        i = SIZE_MAX;
+        return false;
+    }
+
+    lookForName(buffer, size, i, property);
+    if(property.nameBegin == SIZE_MAX && property.nameEnd == SIZE_MAX) {
+        std::cerr << "Name not found" << std::endl;
+        return false;
+    }
+
+    microjsonDebug << "Found name: " << std::string(buffer + property.nameBegin, property.nameSize()) << std::endl;
+
+    if(!lookForSeparator(buffer, size, i)) {
+        std::cerr << "Separator not found" << std::endl;
+        return false;
+    }
+
+    lookForValue(buffer, size, i, property);
+    microjsonDebug << "Found value: " << std::string(buffer + property.valueBegin, property.valueSize()) << std::endl;
+    findSeparator(buffer, size, i, expectedEndByte);
+
+    return property.check();
 }
 
 microjson::JsonObject microjson::parseJsonObject(const char *buffer, size_t size) {
