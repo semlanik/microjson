@@ -97,5 +97,6 @@ inline bool skipWhiteSpace(const char byte) {
     return byte == '\n' || byte == ' ' || byte == '\r' || byte == '\t' || byte == '\f' || byte == '\v';
 }
 
+extern bool extractValue(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property);
 extern bool extractProperty(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property);
 }

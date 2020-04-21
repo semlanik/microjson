@@ -284,17 +284,6 @@ void findSeparator(const char *buffer, size_t size, size_t &i, const char expect
     }
 }
 
-bool extractValue(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property) {
-    if (size == 0) {
-        i = SIZE_MAX;
-        return false;
-    }
-    lookForValue(buffer, size, i, property);
-    findSeparator(buffer, size, i, expectedEndByte);
-
-    return property.checkValue();
-}
-
 using Extractor = bool(*)(const char *, size_t, size_t &, const char, microjson::JsonProperty &);
 
 template<typename R,
@@ -349,6 +338,17 @@ void appendValue(const char* buffer, microjson::JsonArray &values, const microjs
     values.push_back({value, property.type});
 };
 
+}
+
+bool microjson::extractValue(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property) {
+    if (size == 0) {
+        i = SIZE_MAX;
+        return false;
+    }
+    lookForValue(buffer, size, i, property);
+    findSeparator(buffer, size, i, expectedEndByte);
+
+    return property.checkValue();
 }
 
 bool microjson::extractProperty(const char *buffer, size_t size, size_t &i, const char expectedEndByte, microjson::JsonProperty &property) {
