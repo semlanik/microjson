@@ -30,7 +30,10 @@
 #ifdef MICROJSON_DEBUG
     #define microjsonDebug std::cout
 #else
-    struct microjsonNull : public std::ostream {};
+    struct microjsonNull : public std::ostream {
+        class nullBuffer : public std::streambuf {};
+        microjsonNull() : std::ostream(new nullBuffer) {}
+    };
     static microjsonNull nullout;
     #define microjsonDebug nullout
 #endif
