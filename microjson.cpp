@@ -128,6 +128,7 @@ void lookForValue(const char *buffer, size_t size, size_t &i, microjson::JsonPro
     int valueBracketsCounter = -1;
     int trueCounter = 3;
     int falseCounter = 4;
+    int nullCounter = 3;
 
     std::function<bool(void)> valueEndMarker;
     bool beginFound = false;
@@ -215,6 +216,13 @@ void lookForValue(const char *buffer, size_t size, size_t &i, microjson::JsonPro
                     return falseCounter == 0;
                 };
                 property.type = microjson::JsonBoolType;
+                break;
+            case 'n':
+                valueEndMarker = [&nullCounter](){
+                    --nullCounter;
+                    return nullCounter == 0;
+                };
+                property.type = microjson::JsonObjectType;
                 break;
             case '[':
                 valueBracketsCounter++;

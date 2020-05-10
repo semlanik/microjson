@@ -792,3 +792,37 @@ TEST_F(MicrojsonDeserializationTest, MixedStringValue) {
     EXPECT_EQ(it->second.type, microjson::JsonObjectType);
     EXPECT_STREQ(it->second.value.c_str(), "{\"test]Fiel]d1}\":[\"[[test2\",\"}test{{2\"]}");
 }
+
+TEST_F(MicrojsonDeserializationTest, TestInvalidValues) {
+    const char *buffer1 = "{\"testField1\":null}";
+    size_t size = strlen(buffer1);
+    microjson::JsonObject obj = microjson::parseJsonObject(buffer1, size);
+    auto it = obj.find("testField1");
+    ASSERT_TRUE(it != obj.end());
+    EXPECT_EQ(it->second.type, microjson::JsonObjectType);
+    EXPECT_STREQ(it->second.value.c_str(), "null");
+
+    const char *buffer2 = "{\"testField1\":\"NaN\"}";
+    size = strlen(buffer2);
+    obj = microjson::parseJsonObject(buffer2, size);
+    it = obj.find("testField1");
+    ASSERT_TRUE(it != obj.end());
+    EXPECT_EQ(it->second.type, microjson::JsonStringType);
+    EXPECT_STREQ(it->second.value.c_str(), "NaN");
+
+    const char *buffer3 = "{\"testField1\":\"Infinity\"}";
+    size = strlen(buffer3);
+    obj = microjson::parseJsonObject(buffer3, size);
+    it = obj.find("testField1");
+    ASSERT_TRUE(it != obj.end());
+    EXPECT_EQ(it->second.type, microjson::JsonStringType);
+    EXPECT_STREQ(it->second.value.c_str(), "Infinity");
+
+    const char *buffer4 = "{\"testField1\":\"-Infinity\"}";
+    size = strlen(buffer4);
+    obj = microjson::parseJsonObject(buffer4, size);
+    it = obj.find("testField1");
+    ASSERT_TRUE(it != obj.end());
+    EXPECT_EQ(it->second.type, microjson::JsonStringType);
+    EXPECT_STREQ(it->second.value.c_str(), "-Infinity");
+}
