@@ -7,6 +7,12 @@ set(TARGET_STATIC ${TARGET}Static)
 set(TARGET_EXPORT ${TARGET}Targets)
 set(TARGET_CONFIG ${TARGET}Config)
 
+# Conan support, optional
+if(EXISTS "${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    conan_basic_setup()
+endif()
+
 include(GNUInstallDirs)
 
 set(TARGET_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/${TARGET})
@@ -45,11 +51,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake" DESTINATION "
 export(PACKAGE ${TARGET})
 export(TARGETS ${TARGET} FILE ${TARGET_EXPORT}.cmake)
 
-if(DEFINED $ENV{MICROJSON_MAKE_TESTS})
-    set(MICROJSON_MAKE_TESTS $ENV{MICROJSON_MAKE_TESTS})
-elseif(NOT DEFINED MICROJSON_MAKE_TESTS)
-    set(MICROJSON_MAKE_TESTS ON)
-endif()
+set(MICROJSON_MAKE_TESTS OFF CACHE BOOL "Enables tests")
 
 if(MICROJSON_MAKE_TESTS)
     find_package(GTest)
