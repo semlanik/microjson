@@ -24,41 +24,51 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(${TARGET} microjson.cpp)
-set_target_properties(${TARGET} PROPERTIES VERSION ${PROJECT_VERSION} PUBLIC_HEADER "microjson.h" OUTPUT_NAME ${TARGET})
-target_include_directories(${TARGET} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/${TARGET}>
-    $<INSTALL_INTERFACE:${TARGET_INCLUDE_DIR}>
-)
+if(MICROJSON_OBJECT_LIB_ONLY)
+    add_library(${TARGET} OBJECT microjson.cpp)
+    target_include_directories(${TARGET} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/${TARGET}>
+        $<INSTALL_INTERFACE:${TARGET_INCLUDE_DIR}>
+    )
+else()
+    add_library(${TARGET} microjson.cpp)
 
-install(TARGETS ${TARGET}
-    EXPORT ${TARGET_EXPORT} COMPONENT dev
-    ARCHIVE DESTINATION ${TARGET_LIB_DIR} COMPONENT lib
-    PUBLIC_HEADER DESTINATION ${TARGET_INCLUDE_DIR} COMPONENT dev
-    LIBRARY DESTINATION ${TARGET_LIB_DIR} COMPONENT lib
-    RUNTIME DESTINATION ${TARGET_BINDIR} COMPONENT lib)
+    set_target_properties(${TARGET} PROPERTIES VERSION ${PROJECT_VERSION} PUBLIC_HEADER "microjson.h" OUTPUT_NAME ${TARGET})
+    target_include_directories(${TARGET} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/${TARGET}>
+        $<INSTALL_INTERFACE:${TARGET_INCLUDE_DIR}>
+    )
 
-install(EXPORT ${TARGET_EXPORT} FILE ${TARGET_EXPORT}.cmake DESTINATION ${TARGET_CMAKE_DIR} COMPONENT dev)
+    install(TARGETS ${TARGET}
+        EXPORT ${TARGET_EXPORT} COMPONENT dev
+        ARCHIVE DESTINATION ${TARGET_LIB_DIR} COMPONENT lib
+        PUBLIC_HEADER DESTINATION ${TARGET_INCLUDE_DIR} COMPONENT dev
+        LIBRARY DESTINATION ${TARGET_LIB_DIR} COMPONENT lib
+        RUNTIME DESTINATION ${TARGET_BINDIR} COMPONENT lib)
 
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    "${TARGET_CONFIG}.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake"
-    INSTALL_DESTINATION "${TARGET_CMAKE_DIR}")
+    install(EXPORT ${TARGET_EXPORT} FILE ${TARGET_EXPORT}.cmake DESTINATION ${TARGET_CMAKE_DIR} COMPONENT dev)
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake" DESTINATION "${TARGET_CMAKE_DIR}" COMPONENT dev)
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+        "${TARGET_CONFIG}.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake"
+        INSTALL_DESTINATION "${TARGET_CMAKE_DIR}")
 
-export(PACKAGE ${TARGET})
-export(TARGETS ${TARGET} FILE ${TARGET_EXPORT}.cmake)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_CONFIG}.cmake" DESTINATION "${TARGET_CMAKE_DIR}" COMPONENT dev)
 
-set(MICROJSON_MAKE_TESTS OFF CACHE BOOL "Enables tests")
+    export(PACKAGE ${TARGET})
+    export(TARGETS ${TARGET} FILE ${TARGET_EXPORT}.cmake)
 
-if(MICROJSON_MAKE_TESTS)
-    find_package(GTest)
-    if(GTest_FOUND)
-        enable_testing()
-        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/tests")
-    else()
-        message(STATUS "Force disable test")
+    set(MICROJSON_MAKE_TESTS OFF CACHE BOOL "Enables tests")
+
+    if(MICROJSON_MAKE_TESTS)
+        find_package(GTest)
+        if(GTest_FOUND)
+            enable_testing()
+            add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/tests")
+        else()
+            message(STATUS "Force disable test")
+        endif()
     endif()
 endif()
